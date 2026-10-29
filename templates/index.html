@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PPT 台卡批量生成工具</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="logo">🪧</span>
+      <div>
+        <h1>PPT 台卡批量生成工具</h1>
+        <p>上传 PPT 模板 → 导入姓名 → 自动填入 → 下载新文件 · 全程本地处理</p>
+      </div>
+    </div>
+    <span class="badge">本地运行 · 不上传任何数据</span>
+  </header>
+
+  <main class="container">
+    <!-- 步骤导航 -->
+    <nav class="steps" id="stepsNav">
+      <div class="step is-active" data-step="1"><span>1</span>上传模板</div>
+      <div class="step" data-step="2"><span>2</span>选择姓名框</div>
+      <div class="step" data-step="3"><span>3</span>导入姓名</div>
+      <div class="step" data-step="4"><span>4</span>生成规则</div>
+      <div class="step" data-step="5"><span>5</span>预览</div>
+      <div class="step" data-step="6"><span>6</span>生成下载</div>
+    </nav>
+
+    <!-- 第一步：上传模板 -->
+    <section class="card" id="step1">
+      <h2><i class="num">1</i> 上传 PPT 模板</h2>
+      <p class="hint">选择用于制作台卡的 <code>.pptx</code> 文件（不超过 50MB）。原文件不会被修改。</p>
+      <div class="dropzone" id="pptDropzone">
+        <input type="file" id="pptFile" accept=".pptx" hidden>
+        <div class="dz-inner">
+          <div class="dz-icon">📄</div>
+          <p>点击选择或拖拽 <strong>.pptx</strong> 文件到此处</p>
+        </div>
+      </div>
+      <div class="ppt-info" id="pptInfo" hidden>
+        <div class="info-line"><strong>文件名：</strong><span id="pptFileName"></span></div>
+        <div class="info-line"><strong>幻灯片数量：</strong><span id="pptSlideCount"></span></div>
+        <div class="info-line"><strong>页面尺寸：</strong><span id="pptSlideSize"></span></div>
+      </div>
+      <div class="risk-box" id="pptRisks" hidden></div>
+
+      <div class="field" id="slidePickerWrap" hidden>
+        <label for="templateSlideSelect">选择作为台卡标准模板的页面：</label>
+        <select id="templateSlideSelect"></select>
+        <p class="hint" id="slidePickerHint"></p>
+      </div>
+
+      <div class="actions">
+        <button class="btn primary" id="btnNextToStep2" disabled>下一步：选择姓名文本框</button>
+      </div>
+    </section>
+
+    <!-- 第二步：选择姓名文本框 -->
+    <section class="card" id="step2" hidden>
+      <h2><i class="num">2</i> 选择姓名文本框</h2>
+      <p class="hint">
+        下表列出所选页面中<b>所有带文字的文本框</b>。请勾选<b>需要填入姓名的位置</b>。
+        系统已根据文字内容给出<b>疑似姓名框预选（仅供参考）</b>，请务必人工确认后调整。
+      </p>
+      <div class="toolbar">
+        <button class="btn small" id="btnCheckSuggested">仅选中疑似姓名框</button>
+        <button class="btn small" id="btnCheckAll">全选</button>
+        <button class="btn small" id="btnCheckNone">全不选</button>
+        <span class="toolbar-note" id="selectedCount">已选 0 个</span>
+      </div>
+      <div class="table-wrap">
+        <table class="shape-table">
+          <thead>
+            <tr>
+              <th class="col-check">选择</th>
+              <th>#</th>
+              <th>现有文字</th>
+              <th>类型</th>
+              <th>位置(左,上)</th>
+              <th>尺寸(宽×高)</th>
+              <th>字号</th>
+              <th>对齐</th>
+            </tr>
+          </thead>
+          <tbody id="shapeTableBody"></tbody>
+        </table>
+      </div>
+      <p class="empty-note" id="noShapeNote" hidden>该页面未检测到任何带文字的文本框。</p>
+      <div class="actions">
+        <button class="btn" id="btnBackToStep1">上一步</button>
+        <button class="btn primary" id="btnNextToStep3" disabled>下一步：导入姓名</button>
+      </div>
+    </section>
+
+    <!-- 第三步：输入 / 导入姓名 -->
+    <section class="card" id="step3" hidden>
+      <h2><i class="num">3</i> 输入或导入姓名名单</h2>
+      <div class="tabs">
+        <button class="tab is-active" data-tab="paste">直接粘贴</button>
+        <button class="tab" data-tab="txt">上传 TXT</button>
+        <button class="tab" data-tab="excel">上传 Excel</button>
+      </div>
+
+      <div class="tab-pane is-active" id="pane-paste">
+        <p class="hint">每行一个姓名，空行自动忽略。</p>
+        <textarea id="pasteNames" rows="8" placeholder="陈飘&#10;张三&#10;李四"></textarea>
+        <div class="field-row">
+          <label class="check"><input type="checkbox" id="trimWhitespace" checked> 去除姓名首尾空格</label>
+          <button class="btn" id="btnLoadPaste">读取名单</button>
+        </div>
+      </div>
+
+      <div class="tab-pane" id="pane-txt">
+        <p class="hint">支持 <code>.txt</code> 文件，自动识别 UTF-8 / GBK 编码。</p>
+        <input type="file" id="txtFile" accept=".txt">
+      </div>
+
+      <div class="tab-pane" id="pane-excel">
+        <p class="hint">支持 <code>.xlsx</code> / <code>.xlsm</code>。XLSM 的宏不会被执行，原始文件不会被修改。</p>
+        <input type="file" id="excelFile" accept=".xlsx,.xlsm">
+        <div class="excel-warning" id="excelWarning" hidden></div>
+        <div id="excelPicker" hidden>
+          <div class="field-row">
+            <label for="excelSheet">工作表：</label>
+            <select id="excelSheet"></select>
+            <label for="excelColumn">姓名所在列：</label>
+            <select id="excelColumn"></select>
+            <label class="check"><input type="checkbox" id="excelSkipHeader" checked> 首行为表头</label>
+          </div>
+          <button class="btn" id="btnParseExcel">解析该列姓名</button>
+        </div>
+        <div class="excel-preview" id="excelPreview"></div>
+      </div>
+
+      <div class="names-result" id="namesResult" hidden>
+        <div class="info-line"><strong>姓名数量：</strong><span id="namesCount"></span> 个</div>
+        <div class="preview-box" id="namesPreview"></div>
+      </div>
+
+      <div class="actions">
+        <button class="btn" id="btnBackToStep2">上一步</button>
+        <button class="btn primary" id="btnNextToStep4" disabled>下一步：设置生成规则</button>
+      </div>
+    </section>
+
+    <!-- 第四步：生成规则 -->
+    <section class="card" id="step4" hidden>
+      <h2><i class="num">4</i> 设置生成规则</h2>
+      <div class="grid">
+        <div class="field">
+          <label for="repeatCount">每个姓名重复次数</label>
+          <input type="number" id="repeatCount" value="2" min="1" step="1">
+          <p class="hint">如名单「陈飘 / 张三」，重复 2 次 → 陈飘、陈飘、张三、张三。</p>
+        </div>
+        <div class="field">
+          <label for="fillOrder">姓名填写顺序</label>
+          <select id="fillOrder">
+            <option value="t2b">从上到下（先按行）</option>
+            <option value="l2r">从左到右（先按列）</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="namesPerPage">每页姓名个数（姓名位置数）</label>
+          <input type="number" id="namesPerPage" value="" min="1" step="1" placeholder="默认=勾选数">
+          <p class="hint">一页放几个姓名。默认等于已勾选的姓名框数量，可调小（只填前 N 个框）。</p>
+        </div>
+        <div class="field">
+          <label for="nameRange">生成范围（可选）</label>
+          <input type="text" id="nameRange" placeholder="如 3-8，留空=全部">
+          <p class="hint">按「重复后」的顺序编号，1 起始。</p>
+        </div>
+      </div>
+      <div class="field-col">
+        <label class="check"><input type="checkbox" id="keepBlankLast" checked> 保留末页未使用的空白台卡（未用姓名框清空）</label>
+        <label class="check"><input type="checkbox" id="treatExisting" checked> 将选中框内已有文字视为占位内容（生成时覆盖）</label>
+        <label class="check"><input type="checkbox" id="sameNameAllBoxes"> 折叠式台卡：同一姓名填入<b>所有</b>选中的姓名框（每页 1 个姓名，用于对折后正反显示同一姓名）</label>
+      </div>
+      <div class="actions">
+        <button class="btn" id="btnBackToStep3">上一步</button>
+        <button class="btn primary" id="btnNextToStep5">下一步：查看预览</button>
+      </div>
+    </section>
+
+    <!-- 第五步：预览 -->
+    <section class="card" id="step5" hidden>
+      <h2><i class="num">5</i> 生成参数与预览</h2>
+      <div class="summary" id="summaryBox"></div>
+      <div class="preview-box" id="genPreview"></div>
+      <p class="hint">请确认以上信息无误。若需修改可返回上一步。</p>
+      <div class="actions">
+        <button class="btn" id="btnBackToStep4">上一步</button>
+        <button class="btn primary big" id="btnGenerate">生成 PPT</button>
+      </div>
+    </section>
+
+    <!-- 第六步：生成结果 -->
+    <section class="card" id="step6" hidden>
+      <h2><i class="num">6</i> 生成结果与下载</h2>
+      <div class="result-box" id="resultBox"></div>
+      <div class="actions">
+        <a class="btn primary big" id="btnDownload" href="#" download>下载生成的文件</a>
+        <button class="btn" id="btnRestart">重新开始</button>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    所有文件均在本地处理，不会上传到任何服务器 · 请勿将包含个人姓名的文件提交到 GitHub
+  </footer>
+
+  <div class="toast" id="toast" hidden></div>
+
+  <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>

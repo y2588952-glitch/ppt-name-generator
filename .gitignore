@@ -1,0 +1,26 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+env/
+
+# 临时上传与生成结果（含个人姓名，切勿提交）
+temp/
+
+# 测试 / 工具缓存
+.pytest_cache/
+.coverage
+htmlcov/
+
+# 个人数据文件（含姓名等敏感信息，切勿提交）
+*.pptx
+*.xlsx
+*.xlsm
+*.docx
+*.doc
+
+# 环境变量 / 密钥
+.env
+.env.*
